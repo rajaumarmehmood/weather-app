@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <link rel="stylesheet" href="./css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Custom Tailwind modifications */
+        .side-menu {
+            transition: all 0.3s ease;
+        }
+
+        .main-content {
+            transition: margin-left 0.3s ease;
+        }
+
+        .switch input:checked+.slider {
+            background-color: #4ade80;
+        }
+
+        /* Chatbot custom styles */
+        df-messenger {
+            z-index: 999;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            --df-messenger-bot-message: white;
+            --df-messenger-button-titlebar-color: #1F2937;
+            --df-messenger-chat-background-color: #f3f4f6;
+            --df-messenger-font-color: #1F2937;
+            --df-messenger-send-icon: #1F2937;
+            --df-messenger-user-message: #1f293752;
+            --df-messenger-button-titlebar-font-color: #ffffff;
+            --df-messenger-button-titlebar-font: 'Orbitron', sans-serif;
+            --df-messenger-chat-font-color: #1F2937;
+            --df-messenger-chat-font: 'Orbitron', sans-serif;
+            --df-messenger-input-font-color: #1F2937;
+            --df-messenger-input-box-color: #e5e7eb;
+            --df-messenger-input-placeholder-font-color: #1F2937;
+            --df-messenger-minimized-chat-icon: url('https://img.icons8.com/fluency/48/weather.png');
+        }
+
+        df-messenger::part(chatbot-button) {
+            background-color: #00f3ff;
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
+        }
+
+        df-messenger::part(chat-wrapper) {
+            border: 1px solid #00f3ff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.3);
+        }
+
+        df-messenger::part(chat-title) {
+            text-shadow: 0 0 5px #00f3ff;
+        }
+
+        df-messenger::part(bot-message) {
+            border: 1px solid #9333ea;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(147, 51, 234, 0.3);
+        }
+
+        df-messenger::part(user-message) {
+            border: 1px solid #00f3ff;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
+        }
+
+        df-messenger::part(text-input) {
+            border: 1px solid #9333ea;
+            border-radius: 5px;
+        }
+
+        df-messenger::part(send-icon) {
+            filter: drop-shadow(0 0 5px #9333ea);
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="hamburger-menu" onclick="toggleMenu()">
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+    </div>
+
+    <!-- Side Menu -->
+    <div class="side-menu fixed top-0 left-0 h-screen w-64 bg-gray-800 text-white p-4 hidden lg:block">
+        <div class="text-center mb-6">
+            <img src="assets/WhatsApp Image 2024-10-14 at 00.14.27_e79ad574.jpg" alt="Logo"
+                class="rounded-full w-20 h-20 object-cover mx-auto shadow-lg">
+        </div>
+        <nav>
+            <ul>
+                <li class="mb-4"><a href="#" id="nav-dashboard"
+                        class="block py-2 px-4 text-lg hover:bg-gray-700 rounded">Dashboard</a></li>
+                <li><a href="#" id="nav-tables" class="block py-2 px-4 text-lg hover:bg-gray-700 rounded">Tables</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+
+    <!-- Dashboard Section -->
+    <div id="dashboard-section" class="main-content lg:ml-64 p-6 transition-all ease-in-out duration-300">
+        <!-- Weather Widget -->
+        <div class="weather-widget bg-white p-6 rounded-lg shadow-md mb-6">
+            <form id="city-form" class="mb-4">
+                <label for="city-input" class="block mb-2">Enter City Name:</label>
+                <input type="text" id="city-input" name="city" required class="w-full p-2 border rounded-md mb-2">
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500">Get
+                    Weather</button>
+            </form>
+            <button id="location-button" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-500">Get
+                Forecast for My Location</button>
+            <h2 class="text-2xl font-semibold mt-4">Weather in <span id="city-name">City</span></h2>
+            <p id="weather-description" class="mt-2">Description</p>
+            <p class="mt-2">Temperature: <span id="temperature">0</span> <span id="temp-unit">°C</span></p>
+            <p>Humidity: <span id="humidity">0</span>%</p>
+
+            <!-- Temperature Unit Toggle (°C/°F) -->
+            <div class="mt-4 flex items-center">
+                <label class="switch">
+                    <input type="checkbox" id="toggle-unit">
+                    <span class="slider round"></span>
+                </label>
+                <span id="unit-label" class="ml-2">°C</span> <!-- This label will change dynamically -->
+            </div>
+        </div>
+
+        <!-- Forecast Cards -->
+        <div class="forecast-cards grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6" id="forecast-cards">
+            <!-- Forecast cards will be dynamically inserted here -->
+        </div>
+
+        <!-- Scrollable Charts Container -->
+        <div class="charts-container grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="chart-wrapper bg-white p-4 rounded-lg shadow-md">
+                <canvas id="tempBarChart"></canvas>
+            </div>
+            <div class="chart-wrapper bg-white p-4 rounded-lg shadow-md">
+                <canvas id="weatherDonutChart"></canvas>
+            </div>
+            <div class="chart-wrapper bg-white p-4 rounded-lg shadow-md">
+                <canvas id="tempLineChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tables Section (Initially Hidden) -->
+    <div id="tables-section" class="main-content lg:ml-64 p-6 transition-all ease-in-out duration-300 hidden">
+        <h2 class="text-2xl font-semibold mb-4">Temperature Forecast for the Next 5 Days</h2>
+
+        <!-- Filter Options -->
+        <div class="filter-options mb-4">
+            <label for="filter-select" class="block mb-2">Filter by:</label>
+            <select id="filter-select" class="w-full p-2 border rounded-md">
+                <option value="default" selected>Filter</option>
+                <option value="temp-asc">Temperature in Ascending Order</option>
+                <option value="no-rain">Days Without Rain</option>
+                <option value="highest-temp">Day with the Highest Temperature</option>
+                <option value="temp-desc">Temperatures in Descending Order</option>
+            </select>
+        </div>
+
+        <!-- Forecast Table -->
+        <div class="forecast-table overflow-x-auto">
+            <table class="min-w-full bg-white rounded-lg shadow-md">
+                <thead>
+                    <tr>
+                        <th class="px-4 py-2 text-left">Date</th>
+                        <th class="px-4 py-2 text-left">Temperature (°C)</th>
+                        <th class="px-4 py-2 text-left">Weather</th>
+                    </tr>
+                </thead>
+                <tbody id="forecast-table-body">
+                    <!-- Weather data will be inserted here dynamically -->
+                </tbody>
+            </table>
+            <div id="pagination-controls" class="mt-4"></div>
+        </div>
+    </div>
+
+    <!-- Chatbot Widget -->
+    <div id="chatbot-container" class="fixed bottom-4 right-4 bg-white p-4 rounded-lg shadow-md hidden">
+        <h3 class="text-lg font-semibold mb-2">Ask WeatherBot</h3>
+        <form id="chatbot-form" class="mb-2">
+            <input type="text" id="user-question" placeholder="Ask me about the weather..."
+                class="w-full p-2 border rounded-md">
+            <button type="submit"
+                class="bg-blue-600 text-white px-4 py-2 rounded mt-2 w-full hover:bg-blue-500">Send</button>
+        </form>
+        <div id="chatbot-response" class="mt-2"></div>
+    </div>
+
+    <!-- Chatbot Toggle Button -->
+    <button id="chatbot-toggle"
+        class="chatbot-button"></button>
+
+
+    <script src="https://www.gstatic.com/dialogflow-console/fast/messenger/bootstrap.js?v=1"></script>
+    <df-messenger intent="WELCOME" chat-title="WeatherBot" agent-id="947ec4a9-2d6f-4faf-b539-6e9f9def288f"
+        language-code="en" chat-icon="https://img.icons8.com/fluency/48/weather.png"></df-messenger>
+    <script src="./js/app.js"></script>
+    <script src="./js/chart.js"></script>
+</body>
+
+</html>
