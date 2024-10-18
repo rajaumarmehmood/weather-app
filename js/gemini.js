@@ -32,7 +32,7 @@ async function sendMessage() {
 
 function addMessage(sender, text) {
     const messageElement = document.createElement('div');
-    messageElement.classList.add('message', ${sender}-message);
+    messageElement.classList.add('message', `${sender}-message`);
     messageElement.textContent = text;
     chatbotMessages.appendChild(messageElement);
     chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
