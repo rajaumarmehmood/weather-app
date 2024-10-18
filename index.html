@@ -131,14 +131,31 @@
                     <div id="pagination-controls"></div>
                 </section>
             </div>
+            <!-- Chatbot Container -->
+            <div class="chatbot-container" id="chatbot-container">
+                <div class="chatbot-header">
+                    <h3>Gemini Chatbot</h3>
+                </div>
+                <div class="chatbot-messages" id="chatbot-messages"></div>
+                <div class="chatbot-input">
+                    <input type="text" id="chatbot-input" placeholder="Type your message...">
+                    <button id="chatbot-send">Send</button>
+                </div>
+            </div>
+
+            <!-- Chatbot Icon -->
+            <div class="chatbot-icon" id="chatbot-icon">
+                <i class="fas fa-comment"></i>
+            </div>
         </main>
     </div>
 
-    <script src="https://www.gstatic.com/dialogflow-console/fast/messenger/bootstrap.js?v=1"></script>
+    <!-- <script src="https://www.gstatic.com/dialogflow-console/fast/messenger/bootstrap.js?v=1"></script>
     <df-messenger intent="WELCOME" chat-title="WeatherBot" agent-id="947ec4a9-2d6f-4faf-b539-6e9f9def288f"
         language-code="en" chat-icon="https://img.icons8.com/fluency/48/weather.png">
-    </df-messenger>
+    </df-messenger> -->
     <script src="./js/app.js"></script>
+    <script type="module" src="./js/gemini.js"></script>
 </body>
 
 </html>
