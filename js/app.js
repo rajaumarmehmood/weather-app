@@ -1,378 +1,430 @@
-const dialogflowProjectId = 'weatherchatbot-438609';  // Replace with your Dialogflow project ID
-const weatherApiKey = '717e14a9159840405b3dfd105b33768c'; // Your OpenWeather API key
-let units = 'metric'; // Default to Celsius
-const dialogflowSessionId = 'weather-dashboard-session';
-const dialogflowLanguageCode = 'en';
+// Constants
+const API_KEY = '717e14a9159840405b3dfd105b33768c';
+const API_BASE_URL = 'https://api.openweathermap.org/data/2.5';
 
-// Function to make API call to Dialogflow
-// async function sendMessageToDialogflow(message) {
-//     const dialogflowEndpoint = `https://dialogflow.googleapis.com/v2/projects/${dialogflowProjectId}/agent/sessions/${dialogflowSessionId}:detectIntent`;
-    
-//     // Get access token from Google Cloud (you need to use your service account credentials)
-//     const token = await getAccessToken();
+// DOM Elements
+const cityForm = document.getElementById('city-form');
+const cityInput = document.getElementById('city-input');
+const locationButton = document.getElementById('location-button');
+const cityNameElement = document.getElementById('city-name');
+const weatherDescriptionElement = document.getElementById('weather-description');
+const temperatureElement = document.getElementById('temperature');
+const humidityElement = document.getElementById('humidity');
+const windElement = document.getElementById('wind-speed');
+const unitToggle = document.getElementById('toggle-unit');
+const unitLabel = document.getElementById('unit-label');
+const tempUnitTextElement = document.getElementById('temp-unit');
+const forecastCardsContainer = document.getElementById('forecast-cards');
+const darkModeToggle = document.getElementById('dark-mode-toggle');
+const filterSelect = document.getElementById('filter-select');
+const forecastTableBody = document.getElementById('forecast-table-body');
+const paginationControls = document.getElementById('pagination-controls');
+const sidebarToggle = document.getElementById('sidebar-toggle');
+const sidebar = document.querySelector('.sidebar');
+const navLinks = document.querySelectorAll('.sidebar nav ul li a');
+const weatherinfo = document.getElementById('weather-info');
 
-//     const response = await fetch(dialogflowEndpoint, {
-//         method: 'POST',
-//         headers: {
-//             'Authorization': `Bearer ${token}`,
-//             'Content-Type': 'application/json'
-//         },
-//         body: JSON.stringify({
-//             queryInput: {
-//                 text: {
-//                     text: message,
-//                     languageCode: dialogflowLanguageCode
-//                 }
-//             }
-//         })
-//     });
+// Charts
+let tempBarChart, weatherDonutChart, tempLineChart;
 
-//     const data = await response.json();
-//     return data.queryResult.fulfillmentText;  // This is the response from Dialogflow
-// }
-
-// // Helper function to get access token (using Google service account)
-// async function getAccessToken() {
-//     const key = {
-//         // Replace these with your service account details
-//         "type": "service_account",
-//         "project_id": "your-project-id",
-//         "private_key_id": "your-private-key-id",
-//         "private_key": "-----BEGIN PRIVATE KEY-----\nYOUR-PRIVATE-KEY\n-----END PRIVATE KEY-----\n",
-//         "client_email": "your-service-account-email@your-project-id.iam.gserviceaccount.com",
-//         "client_id": "your-client-id",
-//         "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-//         "token_uri": "https://oauth2.googleapis.com/token",
-//         "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-//         "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/your-service-account-email"
-//     };
-
-//     const response = await fetch('https://oauth2.googleapis.com/token', {
-//         method: 'POST',
-//         headers: {
-//             'Content-Type': 'application/x-www-form-urlencoded',
-//         },
-//         body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${createJwtAssertion(key)}`
-//     });
-
-//     const data = await response.json();
-//     return data.access_token;
-// }
-
-// // Function to create JWT assertion for the token (you can use a library like jsonwebtoken)
-// function createJwtAssertion(key) {
-//     const jwtHeader = {
-//         alg: 'RS256',
-//         typ: 'JWT'
-//     };
-//     const jwtClaimSet = {
-//         iss: key.client_email,
-//         scope: 'https://www.googleapis.com/auth/dialogflow',
-//         aud: 'https://oauth2.googleapis.com/token',
-//         exp: Math.floor(Date.now() / 1000) + 3600,
-//         iat: Math.floor(Date.now() / 1000)
-//     };
-
-//     const encodedHeader = btoa(JSON.stringify(jwtHeader));
-//     const encodedClaimSet = btoa(JSON.stringify(jwtClaimSet));
-
-//     const signatureInput = `${encodedHeader}.${encodedClaimSet}`;
-//     const signature = signWithPrivateKey(signatureInput, key.private_key);  // This will sign using your private key
-
-//     return `${encodedHeader}.${encodedClaimSet}.${signature}`;
-// }
-
-// // Dummy function for signing JWT (you need to use a JWT library to sign with RSA)
-// function signWithPrivateKey(input, privateKey) {
-//     // You will need to use an external library like `jsonwebtoken` to sign the input
-//     return 'signed-jwt';
-// }
-
-// // Chatbot Form Submission Handling
-// document.getElementById('chatbot-form').addEventListener('submit', async function(event) {
-//     event.preventDefault();
-//     const userMessage = document.getElementById('user-question').value;
-
-//     // Display user's message in chatbot
-//     const chatbotResponseContainer = document.getElementById('chatbot-response');
-//     chatbotResponseContainer.innerHTML += `<p><strong>You:</strong> ${userMessage}</p>`;
-
-//     // Send message to Dialogflow
-//     const dialogflowResponse = await sendMessageToDialogflow(userMessage);
-
-//     // Display Dialogflow's response in chatbot
-//     chatbotResponseContainer.innerHTML += `<p><strong>WeatherBot:</strong> ${dialogflowResponse}</p>`;
-//     document.getElementById('user-question').value = '';  // Clear the input field
-// });
-
-// Toggle Chatbot Visibility
-document.getElementById('chatbot-toggle').addEventListener('click', function () {
-    const chatbot = document.querySelector('df-messenger');
-    if (chatbot.style.display === 'none' || chatbot.style.display === '') {
-        chatbot.style.display = 'block';
-    } else {
-        chatbot.style.display = 'none';
-    }
-});
-
-document.getElementById('city-form').addEventListener('submit', function(event) {
-    event.preventDefault();
-    const city = document.getElementById('city-input').value;
-    fetchWeather(city);
-});
-
-document.getElementById('location-button').addEventListener('click', getLocation);
-
-document.getElementById('toggle-unit').addEventListener('click', function() {
-    units = units === 'metric' ? 'imperial' : 'metric';
-    
-    const city = document.getElementById('city-input').value || document.getElementById('city-name').textContent; // Fallback city
-    fetchWeather(city);
-});
-
-document.getElementById('toggle-unit').addEventListener('change', function() {
-    const isChecked = this.checked;
-    units = isChecked ? 'imperial' : 'metric';
-    
-    // Update the label dynamically
-    document.getElementById('unit-label').textContent = isChecked ? '°F' : '°C';
-    
-    const city = document.getElementById('city-input').value || document.getElementById('city-name'); // Fallback city
-    // fetchWeather(city); // Fetch weather in the new unit
-});
-
-function fetchWeather(city) {
-    fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${weatherApiKey}&units=${units}`)
-    .then(response => response.json())
-    .then(data => {
-        updateWeatherUI(data);
-        fetchForecast(city);
-    })
-    .catch(error => console.error('Error fetching weather:', error));
-}
-
-let forecastDataCache = []; // Cache forecast data so it doesn't fetch multiple times
-
-function fetchForecast(city) {
-    fetch(`https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${weatherApiKey}&units=${units}`)
-    .then(response => response.json())
-    .then(data => {
-        forecastDataCache = data.list; // Cache the forecast data
-        updateForecastUI(data.list);   // Update forecast cards and charts
-        displayTable(data.list);       // Populate the table for the tables page
-    })
-    .catch(error => console.error('Error fetching forecast:', error));
-}
-
-
-function updateWeatherUI(data) {
-    document.getElementById('city-name').textContent = data.name;
-    document.getElementById('weather-description').textContent = data.weather[0].description;
-    document.getElementById('temperature').textContent = Math.round(data.main.temp);
-    document.getElementById('humidity').textContent = data.main.humidity;
-    document.getElementById('temp-unit').textContent = units === 'metric' ? '°C' : '°F';
-    
-    // // Change the background based on the weather condition
-    // const weatherWidget = document.getElementById('weather-widget');
-    // const condition = data.weather[0].main.toLowerCase();
-
-    // if (condition.includes('clear')) {
-    //     weatherWidget.style.backgroundImage = 'url(assets/clear-sky.jpeg)';
-    //     weatherWidget.style.backgroundSize = 'cover';
-    //     weatherWidget.style.backgroundPosition = 'center';
-    //     weatherWidget.style.backgroundRepeat = 'no-repeat';
-    //     if(weatherWidget.style.color === 'white')
-    //     {
-    //         weatherWidget.style.color = 'black';
-    //     }
-    // } else if (condition.includes('clouds')) {
-    //     weatherWidget.style.backgroundImage = 'url(assets/cloudy.jpeg)';
-    //     weatherWidget.style.backgroundSize = 'cover';
-    //     weatherWidget.style.backgroundPosition = 'center';
-    //     weatherWidget.style.color = 'white';
-    //     weatherWidget.style.backgroundRepeat = 'no-repeat';
-    // } else if (condition.includes('rain')) {
-    //     weatherWidget.style.backgroundImage = 'url(assets/rainy.jpeg)';
-    //     weatherWidget.style.backgroundSize = 'cover';
-    //     weatherWidget.style.backgroundPosition = 'center';
-    //     weatherWidget.style.backgroundRepeat = 'no-repeat';
-    //     weatherWidget.style.color = 'white';
-    // } else if (condition.includes('snow')) {
-    //     weatherWidget.style.backgroundImage = 'url(assets/snow.jpeg)';
-    //     weatherWidget.style.backgroundSize = 'cover';
-    //     weatherWidget.style.backgroundPosition = 'center';
-    //     weatherWidget.style.backgroundRepeat = 'no-repeat';
-    //     weatherWidget.style.backgroundPosition = 'center';
-    //     if(weatherWidget.style.color === 'white')
-    //     {
-    //         weatherWidget.style.color = 'black';
-    //     }
-    // } else {
-    //     weatherWidget.style.backgroundImage = 'url(assets/default-weather.jpeg)';
-    //     weatherWidget.style.backgroundSize = 'cover';
-    //     weatherWidget.style.backgroundPosition = 'center';
-    //     weatherWidget.style.backgroundRepeat = 'no-repeat';
-    //     weatherWidget.style.backgroundPosition = 'center';
-    //     if(weatherWidget.style.color === 'black')
-    //     {
-    //         weatherWidget.style.color = 'white';
-    //     }
-    // }
-}
-
-
-function updateForecastUI(forecastData) {
-    const forecastCards = document.getElementById('forecast-cards');
-    forecastCards.innerHTML = ''; // Clear previous forecast
-
-    forecastData.forEach((entry) => {
-        const date = new Date(entry.dt * 1000); // Convert timestamp to milliseconds
-        const icon = entry.weather[0].icon; // Get weather icon
-        const description = entry.weather[0].description; // Get weather description
-        const temp = Math.round(entry.main.temp); // Round temperature
-        const forecastItem = document.createElement('div');
-        forecastItem.className = 'forecast-item';
-        forecastItem.innerHTML = `
-            <div class="forecast-date">${date.toLocaleDateString()}</div>
-            <div class="forecast-icon"><img src="http://openweathermap.org/img/wn/${icon}@2x.png" alt="${description}"></div>
-            <div class="forecast-temp">${temp}°</div>
-            <div class="forecast-description">${description}</div>
-        `;
-        forecastCards.appendChild(forecastItem);
-    });
-}
-
-function getLocation() {
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(position => {
-            const lat = position.coords.latitude;
-            const lon = position.coords.longitude;
-            fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${weatherApiKey}&units=${units}`)
-            .then(response => response.json())
-            .then(data => {
-                updateWeatherUI(data);
-                fetchForecast(`${data.name}`);
-            });
-        }, error => {
-            console.error('Geolocation error:', error);
-        });
-    } else {
-        console.error('Geolocation not supported');
-    }
-}
-
-document.getElementById('nav-dashboard').addEventListener('click', function() {
-    document.getElementById('dashboard-section').style.display = 'block';
-    document.getElementById('tables-section').style.display = 'none';
-});
-
-document.getElementById('nav-tables').addEventListener('click', function() {
-    document.getElementById('dashboard-section').style.display = 'none';
-    document.getElementById('tables-section').style.display = 'block';
-
-    // Use cached data if available; otherwise, fetch forecast
-    if (forecastDataCache.length > 0) {
-        displayTable(forecastDataCache);
-    } else {
-        const city = document.getElementById('city-input').value || 'London'; // default city
-        fetchForecast(city); // Fetch the forecast if not already done
-    }
-});
-
+// State
+let units = 'metric';
+let currentCity = '';
 let currentPage = 1;
 const rowsPerPage = 10;
+let filteredForecastData = [];
+let originalForecastData = [];
 
-function displayTable(forecastData) {
-    const tableBody = document.getElementById('forecast-table-body');
-    tableBody.innerHTML = ''; // Clear previous data
+// Event Listeners
+document.addEventListener('DOMContentLoaded', init);
+cityForm.addEventListener('submit', handleCitySubmit);
+locationButton.addEventListener('click', handleLocationRequest);
+unitToggle.addEventListener('change', handleUnitToggle);
+darkModeToggle.addEventListener('click', toggleDarkMode);
+filterSelect.addEventListener('change', handleFilterChange);
+sidebarToggle.addEventListener('click', toggleSidebar);
+document.addEventListener('DOMContentLoaded', init);
+sidebarToggle.addEventListener('click', toggleSidebar);
+navLinks.forEach(link => link.addEventListener('click', closeSidebarOnNavClick));
 
-    const startIndex = (currentPage - 1) * rowsPerPage;
-    const endIndex = Math.min(startIndex + rowsPerPage, forecastData.length);
-
-    for (let i = startIndex; i < endIndex; i++) {
-        const forecast = forecastData[i];
-        const row = `<tr>
-            <td>${new Date(forecast.dt_txt).toLocaleDateString()}</td>
-            <td>${Math.round(forecast.main.temp)} °C</td>
-            <td>
-            <img src="http://openweathermap.org/img/wn/${forecast.weather[0].icon}@2x.png" alt="${forecast.weather[0].description}">
-            ${forecast.weather[0].description}
-            </td>
-        </tr>`;
-        tableBody.innerHTML += row;
-    }
-
-    setupPagination(forecastData);
+// Functions
+async function init() {
+    setupResponsiveness();
+    await fetchWeatherData('London');
 }
 
+function setupResponsiveness() {
+    const mediaQuery = window.matchMedia('(max-width: 768px)');
+    handleMediaQueryChange(mediaQuery);
+    mediaQuery.addListener(handleMediaQueryChange);
+}
 
-function setupPagination(forecastData) {
-    const paginationControls = document.getElementById('pagination-controls');
-    paginationControls.innerHTML = ''; // Clear existing buttons
+function handleMediaQueryChange(mediaQuery) {
+    if (mediaQuery.matches) {
+        sidebar.classList.remove('sidebar-open');
+        sidebarToggle.style.display = 'block';
+    } else {
+        sidebar.classList.remove('sidebar-open');
+        sidebarToggle.style.display = 'none';
+    }
+}
 
-    const totalPages = Math.ceil(forecastData.length / rowsPerPage);
+function toggleSidebar() {
+    sidebar.classList.toggle('sidebar-open');
+}
+
+function closeSidebarOnNavClick() {
+    const mediaQuery = window.matchMedia('(max-width: 768px)');
+    if (mediaQuery.matches) {
+        sidebar.classList.remove('sidebar-open');
+    }
+}
+
+async function handleCitySubmit(event) {
+    event.preventDefault();
+    const city = cityInput.value.trim();
+    if (city) {
+        await fetchWeatherData(city);
+    }
+}
+
+async function handleLocationRequest() {
+    if (navigator.geolocation) {
+        try {
+            const position = await new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(resolve, reject);
+            });
+            const { latitude, longitude } = position.coords;
+            await fetchWeatherByCoords(latitude, longitude);
+        } catch (error) {
+            console.error('Geolocation error:', error);
+            alert('Unable to retrieve your location. Please enter a city manually.');
+        }
+    } else {
+        alert('Geolocation is not supported by your browser. Please enter a city manually.');
+    }
+}
+
+function handleUnitToggle() {
+    units = unitToggle.checked ? 'imperial' : 'metric';
+    unitLabel.textContent = unitToggle.checked ? '°F' : '°C';
+    if (currentCity) {
+        fetchWeatherData(currentCity);
+    }
+    
+}
+
+function toggleDarkMode() {
+    document.body.classList.toggle('dark-mode');
+    darkModeToggle.innerHTML = document.body.classList.contains('dark-mode')
+        ? '<i class="fas fa-sun"></i>'
+        : '<i class="fas fa-moon"></i>';
+}
+
+async function fetchWeatherData(city) {
+    try {
+        const weatherData = await fetchData(`${API_BASE_URL}/weather?q=${city}&units=${units}&appid=${API_KEY}`);
+        const forecastData = await fetchData(`${API_BASE_URL}/forecast?q=${city}&units=${units}&appid=${API_KEY}`);
+
+        updateWeatherUI(weatherData);
+        updateForecastUI(forecastData.list);
+        createCharts(forecastData.list);
+
+        currentCity = city;
+    } catch (error) {
+        console.error('Error fetching weather data:', error);
+        alert('Unable to fetch weather data. Please try again.');
+    }
+}
+
+async function fetchWeatherByCoords(lat, lon) {
+    try {
+        const weatherData = await fetchData(`${API_BASE_URL}/weather?lat=${lat}&lon=${lon}&units=${units}&appid=${API_KEY}`);
+        const forecastData = await fetchData(`${API_BASE_URL}/forecast?lat=${lat}&lon=${lon}&units=${units}&appid=${API_KEY}`);
+
+        updateWeatherUI(weatherData);
+        updateForecastUI(forecastData.list);
+        createCharts(forecastData.list);
+
+        currentCity = weatherData.name;
+    } catch (error) {
+        console.error('Error fetching weather data:', error);
+        alert('Unable to fetch weather data. Please try again.');
+    }
+}
+
+async function fetchData(url) {
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error('Network response was not ok');
+    }
+    return response.json();
+}
+
+function updateWeatherUI(data) {
+    cityNameElement.textContent = data.name;
+    weatherDescriptionElement.textContent = data.weather[0].description;
+    temperatureElement.textContent = Math.round(data.main.temp);
+    tempUnitTextElement.textContent = units === 'metric' ? '°C' : '°F';
+    humidityElement.textContent = data.main.humidity;
+    const weatherIconElement = document.getElementById('weather-icon');
+    weatherIconElement.src = `http://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png`;
+    weatherIconElement.alt = data.weather[0].description;
+    const windSpeed = (data.wind.speed * 3.6).toFixed(1);
+    windElement.textContent = windSpeed;
+}
+
+function updateForecastUI(forecastData) {
+    forecastCardsContainer.innerHTML = '';
+    for (let i = 0; i < forecastData.length; i += 8) {
+        const forecast = forecastData[i];
+        const card = createForecastCard(forecast);
+        forecastCardsContainer.appendChild(card);
+    }
+    originalForecastData = [...forecastData];
+    filteredForecastData = [...forecastData];
+    handleFilterChange();
+}
+
+function createForecastCard(forecast) {
+    const card = document.createElement('div');
+    card.className = 'forecast-card';
+    card.innerHTML = `
+        <h3>${new Date(forecast.dt * 1000).toLocaleDateString()}</h3>
+        <img src="http://openweathermap.org/img/wn/${forecast.weather[0].icon}@2x.png" alt="${forecast.weather[0].description}">
+        <p class="temperature">${Math.round(forecast.main.temp)}${units === 'metric' ? '°C' : '°F'}</p>
+        <p>${forecast.weather[0].description}</p>
+    `;
+    return card;
+}
+
+function handleFilterChange() {
+    const selectedFilter = filterSelect.value;
+    filteredForecastData = [...originalForecastData];
+    applyFilter(selectedFilter);
+    displayTable(filteredForecastData);
+    updateCharts(filteredForecastData);
+}
+
+function applyFilter(filter) {
+    switch (filter) {
+        case 'temp-asc':
+            filteredForecastData.sort((a, b) => a.main.temp - b.main.temp);
+            break;
+        case 'temp-desc':
+            filteredForecastData.sort((a, b) => b.main.temp - a.main.temp);
+            break;
+        case 'no-rain':
+            filteredForecastData = filteredForecastData.filter(entry => !entry.weather[0].main.toLowerCase().includes('rain'));
+            break;
+        case 'highest-temp':
+            const maxTemp = Math.max(...filteredForecastData.map(entry => entry.main.temp));
+            filteredForecastData = filteredForecastData.filter(entry => entry.main.temp === maxTemp);
+            break;
+        default:
+            // No filter, use original data
+            break;
+    }
+}
+
+function displayTable(data) {
+    forecastTableBody.innerHTML = '';
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    const endIndex = Math.min(startIndex + rowsPerPage, data.length);
+
+    for (let i = startIndex; i < endIndex; i++) {
+        const forecast = data[i];
+        const row = `
+            <tr>
+            <td>${new Date(forecast.dt * 1000).toLocaleDateString()}</td>
+            <td>${Math.round(forecast.main.temp)} ${units === 'metric' ? '°C' : '°F'}</td>
+            <td>
+            <img src="http://openweathermap.org/img/wn/${forecast.weather[0].icon}@4x.png" alt="${forecast.weather[0].description}" style="width: 30px; height: 30px; border-radius: 50%; box-shadow: 0 0 10px grey;">
+            ${forecast.weather[0].description}
+            </td>
+            <td>${forecast.main.humidity}%</td>
+            </tr>
+        `;
+        forecastTableBody.innerHTML += row;
+    }
+
+    setupPagination(data);
+}
+
+function setupPagination(data) {
+    paginationControls.innerHTML = '';
+    const totalPages = Math.ceil(data.length / rowsPerPage);
+
     for (let i = 1; i <= totalPages; i++) {
         const button = document.createElement('button');
-        button.textContent = i;
+        button.innerText = i;
         button.addEventListener('click', () => {
             currentPage = i;
-            displayTable(forecastData);
+            displayTable(data);
         });
         paginationControls.appendChild(button);
     }
 }
 
-document.getElementById('filter-select').addEventListener('change', function() {
-    const selectedFilter = this.value;
-    applyFilter(selectedFilter);
-});
+function createCharts(forecastData) {
+    const chartData = processChartData(forecastData);
 
-function applyFilter(filter) {
-    let filteredData = [...forecastDataCache]; // Copy the forecast data
-
-    switch (filter) {
-        case 'default':
-            // No filtering, use original forecast data from cache
-            filteredData = forecastDataCache;
-            break;
-        case 'temp-asc':
-            filteredData.sort((a, b) => a.main.temp - b.main.temp);
-            break;
-        case 'temp-desc':
-            filteredData.sort((a, b) => b.main.temp - a.main.temp);
-            break;
-        case 'no-rain':
-            filteredData = filteredData.filter(entry => !entry.weather[0].main.toLowerCase().includes('rain'));
-            break;
-        case 'highest-temp':
-            const maxTemp = Math.max(...filteredData.map(entry => entry.main.temp));
-            filteredData = filteredData.filter(entry => entry.main.temp === maxTemp);
-            break;
-        default:
-            break;
-    }
-
-    // Update the table and forecast cards based on the filtered data
-    displayTable(filteredData);
-    updateForecastUI(filteredData);
+    createTemperatureBarChart(chartData);
+    createWeatherDonutChart(chartData);
+    createTemperatureLineChart(chartData);
 }
 
-function toggleMenu() {
-    const hamburger = document.querySelector('.hamburger-menu');
-    const sideMenu = document.querySelector('.side-menu');
-    
-    // Toggle active state
-    hamburger.classList.toggle('active');
-    sideMenu.classList.toggle('active');
+function updateCharts(filteredData) {
+    const chartData = processChartData(filteredData);
 
-    // Close the menu when an option is selected
-    const menuItems = document.querySelectorAll('.side-menu a');
-    menuItems.forEach(item => {
-        item.addEventListener('click', () => {
-            hamburger.classList.remove('active');
-            sideMenu.classList.remove('active');
-        });
+    updateTemperatureBarChart(chartData);
+    updateWeatherDonutChart(chartData);
+    updateTemperatureLineChart(chartData);
+}
+
+function processChartData(forecastData) {
+    const labels = forecastData.map(forecast => new Date(forecast.dt * 1000).toLocaleDateString());
+    const temperatures = forecastData.map(forecast => Math.round(forecast.main.temp));
+    const weatherConditions = forecastData.map(forecast => forecast.weather[0].main);
+
+    const weatherConditionCounts = weatherConditions.reduce((acc, condition) => {
+        acc[condition] = (acc[condition] || 0) + 1;
+        return acc;
+    }, {});
+
+    return { labels, temperatures, weatherConditionCounts };
+}
+
+function createTemperatureBarChart({ labels, temperatures }) {
+    const ctx = document.getElementById('tempBarChart');
+    if (!ctx) {
+        console.error('Temperature bar chart canvas not found');
+        return;
+    }
+    if (tempBarChart) {
+        tempBarChart.destroy();
+    }
+    tempBarChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: `Temperature (${units === 'metric' ? '°C' : '°F'})`,
+                data: temperatures,
+                backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
     });
 }
 
+function updateTemperatureBarChart({ labels, temperatures }) {
+    if (tempBarChart) {
+        tempBarChart.data.labels = labels;
+        tempBarChart.data.datasets[0].data = temperatures;
+        tempBarChart.data.datasets[0].label = `Temperature (${units === 'metric' ? '°C' : '°F'})`;
+        tempBarChart.update();
+    }
+}
 
+function createWeatherDonutChart({ weatherConditionCounts }) {
+    const ctx = document.getElementById('weatherDonutChart');
+    if (!ctx) {
+        console.error('Weather donut chart canvas not found');
+        return;
+    }
+    if (weatherDonutChart) {
+        weatherDonutChart.destroy();
+    }
+    weatherDonutChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: Object.keys(weatherConditionCounts),
+            datasets: [{
+                data: Object.values(weatherConditionCounts),
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.5)',
+                    'rgba(54, 162, 235, 0.5)',
+                    'rgba(255, 206, 86, 0.5)',
+                    'rgba(75, 192, 192, 0.5)',
+                    'rgba(153, 102, 255, 0.5)',
+                    'rgba(255, 159, 64, 0.5)'
+                ],
+                borderColor: [
+                    'rgba(255, 99, 132, 1)',
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(255, 206, 86, 1)',
+                    'rgba(75, 192, 192, 1)',
+                    'rgba(153, 102, 255, 1)',
+                    'rgba(255, 159, 64, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+}
+
+function updateWeatherDonutChart({ weatherConditionCounts }) {
+    if (weatherDonutChart) {
+        weatherDonutChart.data.labels = Object.keys(weatherConditionCounts);
+        weatherDonutChart.data.datasets[0].data = Object.values(weatherConditionCounts);
+        weatherDonutChart.update();
+    }
+}
+
+function createTemperatureLineChart({ labels, temperatures }) {
+    const ctx = document.getElementById('tempLineChart');
+    if (!ctx) {
+        console.error('Temperature line chart canvas not found');
+        return;
+    }
+    if (tempLineChart) {
+        tempLineChart.destroy();
+    }
+    tempLineChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: `Temperature (${units === 'metric' ? '°C' : '°F'})`,
+                data: temperatures,
+                backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                borderColor: 'rgba(153, 102, 255, 1)',
+                borderWidth: 2,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+function updateTemperatureLineChart({ labels, temperatures }) {
+    if (tempLineChart) {
+        tempLineChart.data.labels = labels;
+        tempLineChart.data.datasets[0].data = temperatures;
+        tempLineChart.data.datasets[0].label = `Temperature (${units === 'metric' ? '°C' : '°F'})`;
+        tempLineChart.update();
+    }
+}
